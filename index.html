@@ -1381,16 +1381,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 // Google Gemini API Configuration
-const GEMINI_API_KEY = "AIzaSyDRjeYTZYKboOKUhScBtnjQgFrAXVE60IQ";
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_URL = `/api/gemini`; // Proxy to hide API key
 // Enhanced System instruction for Gemini model to act as a certified radiologist WITH AGE CONTEXT
 const SYSTEM_INSTRUCTION = `
-You are a board-certified radiologist with more than 25 years of experience in thoracic imaging and chest X-ray interpretation. 
-You are recognized by the American College of Radiology (ACR) and the Radiological Society of North America (RSNA) for your expertise. 
+You are a board-certified radiologist with more than 25 years of experience in thoracic imaging and chest X-ray interpretation.
+You are recognized by the American College of Radiology (ACR) and the Radiological Society of North America (RSNA) for your expertise.
 Your task is to provide precise, evidence-based interpretations of chest radiographs, following ACR guidelines and RSNA standards.
 CRITICAL REQUIREMENT:
 - You MUST incorporate the patient’s demographics (age and gender) into every interpretation.
-- Always contextualize findings based on age-related normal variants and demographic expectations. 
+- Always contextualize findings based on age-related normal variants and demographic expectations.
   Examples:
   • Cardiomegaly in infants/young children may be normal due to thymic tissue.
   • Vascular calcifications are often benign in older adults.
@@ -1501,7 +1500,7 @@ function displayHistory() {
             findingsHtml = '<div class="history-findings">';
             item.detections.forEach(det => {
                 const className = classNames[det.classId];
-                const isEmergency = item.aiAnalysis && item.aiAnalysis.findings && 
+                const isEmergency = item.aiAnalysis && item.aiAnalysis.findings &&
                     item.aiAnalysis.findings.some(f => f.name === className && f.emergency);
                 const findingClass = isEmergency ? 'history-finding-tag history-emergency' : 'history-finding-tag';
                 findingsHtml += `<span class="${findingClass}">${className}</span>`;
@@ -1604,26 +1603,26 @@ function loadHistoryItem(index) {
             displayRatioY = preview.height / originalHeight;
             predictBtn.disabled = !session;
             previewContainer.style.display = 'block';
-            
+           
             // Recalculate scaling factors for proper detection drawing
             const ratio = Math.min(imgSize / originalWidth, imgSize / originalHeight);
             scaleFactor = 1 / ratio;
             padLeft = (imgSize - Math.round(originalWidth * ratio)) / 2;
             padTop = (imgSize - Math.round(originalHeight * ratio)) / 2;
-            
+           
             // Clear canvas and draw detections
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawDetections(currentDetections);
             updateStats(currentDetections);
-            
+           
             // Display AI analysis
             if (aiAnalysisResult) {
                 displayAIAnalysis(aiAnalysisResult);
             }
-            
+           
             // Enable report button
             generateReportBtn.disabled = false;
-            
+           
             // Show results section
             document.getElementById('patientInfoCard').style.display = 'none';
             document.getElementById('uploadCard').style.display = 'block';
@@ -1634,7 +1633,7 @@ function loadHistoryItem(index) {
             document.getElementById('step3').classList.remove('active');
             document.getElementById('step3').classList.add('completed');
             document.getElementById('step4').classList.add('active');
-            
+           
             // Scroll to results
             document.querySelector('.results-section').scrollIntoView({ behavior: 'smooth' });
         };
@@ -1850,14 +1849,14 @@ async function getGeminiAnalysis(detections, demographics) {
         ageContextMessage = "Patient is an adult. Standard radiological interpretations apply. Age-related risk factors (e.g., early emphysematous changes, smoking-related findings) should be considered in context.";
     }
     const prompt = `
-Interpret the following AI-detected findings from a chest X-ray as a board-certified radiologist with over 25 years of experience. 
-The patient is a ${demographics.age}-year-old ${demographics.gender}. 
-Follow ACR (American College of Radiology) and RSNA (Radiological Society of North America) standards. 
+Interpret the following AI-detected findings from a chest X-ray as a board-certified radiologist with over 25 years of experience.
+The patient is a ${demographics.age}-year-old ${demographics.gender}.
+Follow ACR (American College of Radiology) and RSNA (Radiological Society of North America) standards.
 Incorporate demographic and age-specific considerations: ${ageContextMessage}
 Detected findings:
 ${findingsText}
 For each finding, include:
-- A precise diagnosis using radiological terminology, explicitly stating whether it is likely age-related/normal for this group or truly abnormal. 
+- A precise diagnosis using radiological terminology, explicitly stating whether it is likely age-related/normal for this group or truly abnormal.
 - DO NOT dismiss findings as “false positives.” Instead, reinterpret them in the clinical context of age and demographics.
 - Top 3 differential diagnoses with rationale, adjusted for patient age/gender.
 - Clinical implications, including infectious, neoplastic, or cardiac causes, with emphasis on how age affects likelihood.
@@ -1914,7 +1913,7 @@ ${prompt}`
         }
         const textResponse = data.candidates[0].content.parts[0].text.trim();
         let cleanedResponse = textResponse;
-        if (cleanedResponse.startsWith('```json')) {
+        if (cleanedResponse.startsWith('```json:disable-run')
             cleanedResponse = cleanedResponse.substring(7, cleanedResponse.lastIndexOf('```'));
         } else if (cleanedResponse.startsWith('```')) {
             cleanedResponse = cleanedResponse.substring(3, cleanedResponse.lastIndexOf('```'));
@@ -2063,42 +2062,34 @@ function showCustomConfirm(message, onConfirm, title = "Confirm Action", confirm
     const okBtn = document.getElementById('customConfirmOK');
     const cancelBtn = document.getElementById('customConfirmCancel');
     const closeBtn = modal.querySelector('.custom-modal-close');
-
     // Set content
     messageEl.textContent = message;
     titleEl.textContent = title;
     okBtn.textContent = confirmText;
     okBtn.className = `btn ${confirmClass}`;
-
     // Show modal
     modal.style.display = 'flex';
-
     // Handle OK
     const handleOK = () => {
         modal.style.display = 'none';
         if (typeof onConfirm === 'function') onConfirm();
     };
-
     // Handle Cancel
     const handleCancel = () => {
         modal.style.display = 'none';
     };
-
     // Bind events
     okBtn.onclick = handleOK;
     cancelBtn.onclick = handleCancel;
     closeBtn.onclick = handleCancel;
-
     // Close on outside click
     window.onclick = function(event) {
         if (event.target === modal) {
             handleCancel();
         }
     };
-
     // Prevent body scroll
     document.body.style.overflow = 'hidden';
-
     // Cleanup on close
     const cleanup = () => {
         okBtn.onclick = null;
@@ -2107,7 +2098,6 @@ function showCustomConfirm(message, onConfirm, title = "Confirm Action", confirm
         window.onclick = null;
         document.body.style.overflow = '';
     };
-
     // Attach cleanup to buttons
     okBtn.addEventListener('click', cleanup, { once: true });
     cancelBtn.addEventListener('click', cleanup, { once: true });
@@ -2204,10 +2194,10 @@ async function processDicomFile(file) {
                     // 8-bit data
                     for (let i = 0; i < canvas.width * canvas.height; i++) {
                         const pixelValue = dataSet.byteArray[pixelDataElement.dataOffset + i];
-                        imageData.data[i * 4] = pixelValue;     // R
+                        imageData.data[i * 4] = pixelValue; // R
                         imageData.data[i * 4 + 1] = pixelValue; // G
                         imageData.data[i * 4 + 2] = pixelValue; // B
-                        imageData.data[i * 4 + 3] = 255;        // A
+                        imageData.data[i * 4 + 3] = 255; // A
                     }
                 } else if (bitsAllocated === 16) {
                     // 16-bit data
@@ -2239,10 +2229,10 @@ async function processDicomFile(file) {
                         }
                         // Normalize using min/max values for better contrast
                         pixelValue = Math.floor(((pixelValue - minValue) / (maxValue - minValue)) * 255);
-                        imageData.data[i * 4] = pixelValue;     // R
+                        imageData.data[i * 4] = pixelValue; // R
                         imageData.data[i * 4 + 1] = pixelValue; // G
                         imageData.data[i * 4 + 2] = pixelValue; // B
-                        imageData.data[i * 4 + 3] = 255;        // A
+                        imageData.data[i * 4 + 3] = 255; // A
                     }
                 } else {
                     reject(new Error(`Unsupported bits allocated: ${bitsAllocated}`));
@@ -2250,27 +2240,27 @@ async function processDicomFile(file) {
                 }
                 // Put image data on canvas
                 ctx.putImageData(imageData, 0, 0);
-                
+               
                 // Create a new canvas for resizing to model's input size (640x640)
                 const resizedCanvas = document.createElement('canvas');
                 const resizedCtx = resizedCanvas.getContext('2d');
                 resizedCanvas.width = imgSize;
                 resizedCanvas.height = imgSize;
-                
+               
                 // Calculate aspect ratio preserving resize
                 const ratio = Math.min(imgSize / canvas.width, imgSize / canvas.height);
                 const newWidth = Math.round(canvas.width * ratio);
                 const newHeight = Math.round(canvas.height * ratio);
                 const offsetX = (imgSize - newWidth) / 2;
                 const offsetY = (imgSize - newHeight) / 2;
-                
+               
                 // Fill background with neutral gray
                 resizedCtx.fillStyle = 'rgb(114, 114, 114)';
                 resizedCtx.fillRect(0, 0, imgSize, imgSize);
-                
+               
                 // Draw the image on the resized canvas
                 resizedCtx.drawImage(canvas, offsetX, offsetY, newWidth, newHeight);
-                
+               
                 // Convert to data URL (JPEG format)
                 const dataURL = resizedCanvas.toDataURL('image/jpeg', 0.95);
                 resolve(dataURL);
@@ -2348,7 +2338,7 @@ function handleFileUpload(file) {
                     }
                     if (dicomMetadata && dicomMetadata.patientSex) {
                         if (!document.getElementById('patientGender').value) {
-                            const genderValue = dicomMetadata.patientSex.toLowerCase().startsWith('m') ? 'male' : 
+                            const genderValue = dicomMetadata.patientSex.toLowerCase().startsWith('m') ? 'male' :
                                               dicomMetadata.patientSex.toLowerCase().startsWith('f') ? 'female' : 'other';
                             document.getElementById('patientGender').value = genderValue;
                         }
